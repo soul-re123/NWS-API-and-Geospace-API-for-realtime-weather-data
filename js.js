@@ -73,26 +73,34 @@ async function search() {
     }
 }
 
-async function fetchData(lat, lon){
-    try{
+async function fetchData(lat, lon) {
+    try {
         const headers = {
             'User-Agent': '(weather-app, ciangrizzle6@gmail.com)'
         };
-    
+
         const pointsResponse = await fetch(`https://api.weather.gov/points/${lat},${lon}`, { headers });
         if (!pointsResponse.ok) throw new Error(`Error fetching points: ${pointsResponse.statusText}`);
 
         const pointsData = await pointsResponse.json();
         const forecastURL = pointsData.properties.forecast;
+        const hourlyURL = pointsData.properties.forecastHourly;
 
-        const forecastResponse = await fetch(forecastURL, { headers });
+        const [forecastResponse, hourlyResponse] = await Promise.all([
+            fetch(forecastURL, { headers }),
+            fetch(hourlyURL, { headers })
+        ]);
+
         if (!forecastResponse.ok) throw new Error(`Error fetching forecast: ${forecastResponse.statusText}`);
+        if (!hourlyResponse.ok) throw new Error(`Error fetching hourly forecast: ${hourlyResponse.statusText}`);
 
         const forecastData = await forecastResponse.json();
-        const periods = forecastData.properties.periods;
+        const hourlyData = await hourlyResponse.json();
 
-        return periods;
-
+        return {
+            periods: forecastData.properties.periods,
+            hourlyPeriods: hourlyData.properties.periods
+        };
     } catch (error) {
         console.error("Failed to fetch weather data:", error);
     }
@@ -117,29 +125,60 @@ async function fetchAlerts(lat, lon) {
 
 function displayAlerts(alerts) {
     const alertElement = document.getElementById('activeAlerts');
-    
+    if (!alertElement) return;
+
+    // Clear previous alerts before rendering new ones
+    alertElement.innerHTML = '';
+
     if (!alerts || alerts.length === 0) {
         alertElement.textContent = "No active weather alerts for this area.";
-        alertElement.style.color = "green"; 
+        alertElement.style.color = "green";
         return;
     }
 
-    const currentAlert = alerts[0].properties;
-    alertElement.textContent = `⚠️ ALERT: ${currentAlert.event} - ${currentAlert.headline}`;
-    alertElement.style.color = "red"; 
+    alertElement.style.color = "red";
+
+    alerts.forEach((alert, index) => {
+        const props = alert.properties || {};
+        const eventName = props.event || "Weather Alert";
+        const headline = props.headline || props.description || "No additional details provided.";
+
+        const item = document.createElement('p');
+        item.textContent = `${index + 1}. ⚠️ ${eventName} — ${headline}`;
+        alertElement.appendChild(item);
+    });
+}
+function displayDewPoint(hourlyPeriods) {
+    const dewElement = document.getElementById('dewPoint');
+    if (!dewElement || !hourlyPeriods || hourlyPeriods.length === 0) return;
+
+    const currentHour = hourlyPeriods[0];
+    const dewC = currentHour.dewpoint?.value;
+
+    if (dewC === null || dewC === undefined) {
+        dewElement.textContent = "Dew Point: N/A";
+        return;
+    }
+
+    const dewF = Math.round((dewC * 9) / 5 + 32);
+    dewElement.textContent = `Dew Point: ${dewF}°F`;
 }
 
 // 2. Orchestrates fetching both datasets and updating the screen
 async function initWeatherAppForLocation(lat = 38.6270, lon = -90.1994) {
     console.log(`Fetching weather for coordinates: ${lat}, ${lon}`);
-    
-    const periods = await fetchData(lat, lon);
+
+    const weatherData = await fetchData(lat, lon);
     const alerts = await fetchAlerts(lat, lon);
-    
-    if (periods) {
-        displayWeather(periods);
+
+    if (weatherData?.periods) {
+        displayWeather(weatherData.periods);
     }
-    
+
+    if (weatherData?.hourlyPeriods) {
+        displayDewPoint(weatherData.hourlyPeriods);
+    }
+
     displayAlerts(alerts);
 }
 
