@@ -3,9 +3,10 @@
 - Note: This function was AI-assisted to help me better understand what I was doing.
  */
 
-// 1. Set your coordinates globally here
+// 1. Set your coordinates and default city globally here
 const LAT = 38.6270; 
 const LON = -90.1994; 
+const DEFAULT_CITY = "St. Louis, Missouri";
 
 // Clean, single search function using separate city and state inputs
 async function search() {
@@ -62,10 +63,10 @@ async function search() {
         const foundLat = selectedLocation.latitude;
         const foundLon = selectedLocation.longitude;
         const stateStr = selectedLocation.admin1 ? `, ${selectedLocation.admin1}` : '';
-        const displayName = `${selectedLocation.name}${stateStr} (${selectedLocation.country})`;
+        const displayName = `${selectedLocation.name}${stateStr}`;
 
-        console.log(`Selected location: ${displayName} -> Lat: ${foundLat}, Lon: ${foundLon}`);
-        initWeatherAppForLocation(foundLat, foundLon);
+        console.log(`Selected location: ${displayName} (${selectedLocation.country}) -> Lat: ${foundLat}, Lon: ${foundLon}`);
+        initWeatherAppForLocation(foundLat, foundLon, displayName);
 
     } catch (error) {
         console.error("Search error:", error);
@@ -123,6 +124,15 @@ async function fetchAlerts(lat, lon) {
     }
 }
 
+function displayCity(cityName) {
+    const cityElement = document.getElementById('city');
+    if (cityElement) {
+        cityElement.textContent = cityName;
+    } else {
+        console.error("Could not find element with id 'city' in your HTML!");
+    }
+}
+
 function displayAlerts(alerts) {
     const alertElement = document.getElementById('activeAlerts');
     if (!alertElement) return;
@@ -148,6 +158,7 @@ function displayAlerts(alerts) {
         alertElement.appendChild(item);
     });
 }
+
 function displayDewPoint(hourlyPeriods) {
     const dewElement = document.getElementById('dewPoint');
     if (!dewElement || !hourlyPeriods || hourlyPeriods.length === 0) return;
@@ -165,8 +176,10 @@ function displayDewPoint(hourlyPeriods) {
 }
 
 // 2. Orchestrates fetching both datasets and updating the screen
-async function initWeatherAppForLocation(lat = 38.6270, lon = -90.1994) {
-    console.log(`Fetching weather for coordinates: ${lat}, ${lon}`);
+async function initWeatherAppForLocation(lat = LAT, lon = LON, locationName = DEFAULT_CITY) {
+    console.log(`Fetching weather for ${locationName} (${lat}, ${lon})`);
+
+    displayCity(locationName);
 
     const weatherData = await fetchData(lat, lon);
     const alerts = await fetchAlerts(lat, lon);
@@ -212,6 +225,7 @@ function displayWeather(periods) {
 }
 
 // 4. Button & Enter Key Event Listeners
+// 4. Button & Enter Key Event Listeners
 document.getElementById('searchButton').addEventListener('click', () => {
     search();
 });
@@ -227,4 +241,4 @@ document.getElementById('stateInput').addEventListener('keydown', (event) => {
 });
 
 // 5. Run the app automatically when the page first loads using default coordinates
-initWeatherAppForLocation(LAT, LON);
+initWeatherAppForLocation(LAT, LON, DEFAULT_CITY);
