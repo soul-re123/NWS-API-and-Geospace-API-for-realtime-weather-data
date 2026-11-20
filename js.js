@@ -225,7 +225,6 @@ function displayWeather(periods) {
 }
 
 // 4. Button & Enter Key Event Listeners
-// 4. Button & Enter Key Event Listeners
 document.getElementById('searchButton').addEventListener('click', () => {
     search();
 });
